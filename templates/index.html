@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nitro Checker - StrongStore</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="bg-zinc-950 text-white min-h-screen">
+  <div class="max-w-5xl mx-auto p-8">
+    <div class="text-center mb-12">
+      <h1 class="text-6xl font-bold text-purple-500">NITRO CHECKER</h1>
+      <p class="text-zinc-400 mt-2">StrongStore e LuckStore</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Link Único -->
+      <div class="bg-zinc-900 rounded-3xl p-8">
+        <h2 class="text-2xl font-bold mb-6">🔗 Link Único</h2>
+        <input type="text" id="singleLink" 
+               class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-5 text-lg focus:outline-none focus:border-purple-500" 
+               placeholder="https://discord.gift/xxxxxxxxxx">
+        <button onclick="checkSingle()" 
+                class="mt-6 w-full bg-purple-600 hover:bg-purple-700 py-5 rounded-2xl font-bold text-xl">
+          VERIFICAR LINK
+        </button>
+        <div id="singleResult" class="mt-6"></div>
+      </div>
+
+      <!-- Lista -->
+      <div class="bg-zinc-900 rounded-3xl p-8">
+        <h2 class="text-2xl font-bold mb-6">📋 Lista de Links</h2>
+        <textarea id="batchLinks" rows="12" 
+                  class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-6 py-5 focus:outline-none focus:border-emerald-500"
+                  placeholder="Cole os links aqui, um por linha..."></textarea>
+        <button onclick="checkBatch()" 
+                class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 py-5 rounded-2xl font-bold text-xl">
+          VERIFICAR LISTA
+        </button>
+      </div>
+    </div>
+
+    <div id="batchResults" class="mt-12"></div>
+  </div>
+
+  <script>
+    async function checkSingle() {
+      const link = document.getElementById('singleLink').value.trim();
+      if (!link) return alert("Digite um link!");
+
+      const resultDiv = document.getElementById('singleResult');
+      resultDiv.innerHTML = `<p class="text-yellow-400">Verificando...</p>`;
+
+      const res = await fetch('/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link })
+      });
+      const data = await res.json();
+      showResult(resultDiv, data);
+    }
+
+    async function checkBatch() {
+      const text = document.getElementById('batchLinks').value.trim();
+      if (!text) return alert("Cole os links!");
+
+      const links = text.split('\n').map(l => l.trim()).filter(l => l);
+      const div = document.getElementById('batchResults');
+      div.innerHTML = `<p class="text-yellow-400 text-center py-8">Verificando ${links.length} links... Aguarde.</p>`;
+
+      const res = await fetch('/check_batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ links })
+      });
+      const results = await res.json();
+
+      let html = `<h2 class="text-3xl font-bold mb-6">Resultados</h2>`;
+      results.forEach(r => {
+        html += `
+          <div class="bg-zinc-900 p-6 rounded-2xl mb-4">
+            <p class="font-mono text-sm break-all">${r.link}</p>
+            <p class="mt-3 text-lg font-bold ${r.status === 'valid' ? 'text-emerald-400' : 'text-red-400'}">
+              ${r.message}
+            </p>
+            ${r.status === 'valid' ? `
+              <p class="text-purple-400 mt-2">Plano: ${r.plan_type} | Duração: ${r.duration}</p>
+              <p class="text-zinc-400">Expira: ${r.expires_at}</p>` : ''}
+          </div>`;
+      });
+      div.innerHTML = html;
+    }
+
+    function showResult(div, data) {
+      let color = data.status === 'valid' ? 'emerald' : 'red';
+      div.innerHTML = `
+        <div class="bg-zinc-900 border border-${color}-500 rounded-2xl p-6">
+          <p class="text-${color}-400 text-2xl font-bold">${data.message}</p>
+          ${data.status === 'valid' ? `
+          <div class="mt-4 grid grid-cols-1 gap-2 text-lg">
+            <p><strong>Plano:</strong> ${data.plan_type}</p>
+            <p><strong>Duração:</strong> ${data.duration}</p>
+            <p><strong>Expira em:</strong> ${data.expires_at}</p>
+          </div>` : ''}
+        </div>`;
+    }
+  </script>
+</body>
+</html>
